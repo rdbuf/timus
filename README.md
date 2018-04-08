@@ -1,0 +1,1 @@
+[Profile](http://acm.timus.ru/author.aspx?id=246905)
