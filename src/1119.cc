@@ -18,12 +18,12 @@ int main() {
     }
 
     d[0][0] = 0;
-    for (int i = 1; i < n; ++i) d[i][0] = d[i-1][0] + 100;
-    for (int i = 1; i < m; ++i) d[0][i] = d[0][i-1] + 100;
+    for (int i = 1; i < n; ++i) d[i][0] = d[i-1][0] + side;
+    for (int j = 1; j < m; ++j) d[0][j] = d[0][j-1] + side;
 
     for (int i = 1; i < n; ++i) {
         for (int j = 1; j < m; ++j) {
-            d[i][j] = min({d[i-1][j] + 100, d[i][j-1] + 100, (d[i][j] == -2 ? d[i-1][j-1] + sqrt(2 * side * side) : numeric_limits<int>::max())});
+            d[i][j] = min({d[i-1][j] + side, d[i][j-1] + side, (d[i][j] == -2 ? d[i-1][j-1] + sqrt(2 * pow(side, 2)) : numeric_limits<int>::max())});
         }
     }
 
