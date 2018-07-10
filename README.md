@@ -1,1 +1,1 @@
-[Profile](http://acm.timus.ru/author.aspx?id=246905)
+[Profile](http://acm.timus.ru/author.aspx?id=246905&sort=difficulty)
