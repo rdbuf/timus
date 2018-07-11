@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cassert>
 #include <algorithm>
 #include <unordered_map>
 #include <tuple>
@@ -6,9 +7,19 @@
 #include <string>
 #include <utility>
 #include <functional>
+#include <cstdint>
 using namespace std;
 
-enum Parity { even, odd };
+struct Parity {
+	bool value;
+	bool initialized = false;
+	Parity() = default;
+	constexpr Parity(bool a) : value(a), initialized(true) {}
+	constexpr Parity operator+(Parity rhs) const { assert(rhs.initialized); return Parity(initialized ? value ^ rhs.value : rhs.value); }
+	constexpr bool operator==(Parity rhs) const { return (initialized ? rhs.value == value : true); }
+	constexpr bool operator!=(Parity rhs) const { return !(*this == rhs); }
+};
+constexpr static Parity even(0), odd(1);
 
 int main() {
 	// we only then know for sure when we have the same segment covered in exact two times
@@ -16,49 +27,37 @@ int main() {
 	int n, m;
 	while (cin >> n >> m) {
 		int steps = 0;
-		unordered_map<int, vector<pair<int, Parity>>> by_l, by_r; // use unordered_map<int, map<Parity>> with exchange()
+		unordered_map<uint32_t, unordered_map<uint32_t, Parity>> straight, reverse; // segments
 		for ( ; steps < m; ++steps) {
-			int l, r; string str_parity;
-			cin >> l >> r >> str_parity;
+			uint32_t l, r; string str_parity; cin >> l >> r >> str_parity;
 			if (l > n || r > n) goto exit;
 			Parity parity = (str_parity == "even" ? even : odd);
 
-			vector<pair<int, pair<int, Parity>>> newly_created;
-			by_l[l].push_back({r, parity}), by_r[r].push_back({l, parity});
-			newly_created.push_back({l, {r, parity}});
-			for (auto& x : by_r[l - 1]) {
-				by_l[x.first].push_back({r, Parity((x.second + parity) % 2)});
-				by_r[r].push_back({x.first, Parity((x.second + parity) % 2)});
-				newly_created.push_back({x.first, {r, Parity((x.second + parity) % 2)}});
-				for (auto& y : by_l[r + 1]) {
-					by_l[x.first].push_back({y.first, Parity((x.second + parity + y.second) % 2)});
-					by_r[y.first].push_back({x.first, Parity((x.second + parity + y.second) % 2)});
-					newly_created.push_back({x.first, {y.first, Parity((x.second + parity + y.second) % 2)}});
+			if (exchange(straight[l][r], parity) != parity) goto exit;
+			if (exchange(reverse[r][l], parity) != parity) goto exit;
+			for (const auto& x : reverse[l - 1]) {
+				const auto& newseg_l = x.first, & newseg_r = r; const auto newseg_parity = x.second + parity;
+				if (exchange(straight[newseg_l][newseg_r], newseg_parity) != newseg_parity) goto exit;
+				if (exchange(reverse[newseg_r][newseg_l], newseg_parity) != newseg_parity) goto exit;
+				for (const auto& y : straight[r + 1]) {
+					const auto& newseg_r = y.first; const auto newseg_parity = (x.second + parity) + y.second;
+					if (exchange(straight[newseg_l][newseg_r], newseg_parity) != newseg_parity) goto exit;
+					if (exchange(reverse[newseg_r][newseg_l], newseg_parity) != newseg_parity) goto exit;
 				}
 			}
-			for (auto& x : by_l[r + 1]) {
-				by_r[x.first].push_back({l, Parity((x.second + parity) % 2)});
-				by_l[l].push_back({x.first, Parity((x.second + parity) % 2)});
-				newly_created.push_back({l, {x.first, Parity((x.second + parity) % 2)}});
-				for (auto& y : by_r[l - 1]) {
-					by_l[y.first].push_back({x.first, Parity((x.second + parity + y.second) % 2)});
-					by_r[x.first].push_back({y.first, Parity((x.second + parity + y.second) % 2)});
-					newly_created.push_back({y.first, {x.first, Parity((x.second + parity + y.second) % 2)}});
-				}
-			}
-			// we should check only the newly created segments
-			for (auto& seg1 : newly_created) {
-				for (auto& seg2 : by_l[seg1.first]) {
-					if (seg2.first == seg1.second.first && seg2.second != seg1.second.second) goto exit;
-				}
-				for (auto& seg2 : by_r[seg1.second.first]) {
-					if (seg2.first == seg1.first && seg2.second != seg1.second.second) goto exit;
+			for (const auto& x : straight[r + 1]) {
+				const auto& newseg_l = l, & newseg_r = x.first; const auto newseg_parity = parity + x.second;
+				if (exchange(straight[newseg_l][newseg_r], newseg_parity) != newseg_parity) goto exit;
+				if (exchange(reverse[newseg_r][newseg_l], newseg_parity) != newseg_parity) goto exit;
+				for (const auto& y : reverse[l - 1]) {
+					const auto& newseg_l = y.first; const auto newseg_parity = y.second + (parity + x.second);
+					if (exchange(straight[newseg_l][newseg_r], newseg_parity) != newseg_parity) goto exit;
+					if (exchange(reverse[newseg_r][newseg_l], newseg_parity) != newseg_parity) goto exit;
 				}
 			}
 		}
 	exit:
 		cout << steps << "\n";
-		string dummy;
-		for (int i = steps; i < m; ++i) getline(cin, dummy);
+		string dummy; for (int i = steps; i < m; ++i) getline(cin, dummy);
 	}
 }
