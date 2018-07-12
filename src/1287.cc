@@ -2,50 +2,75 @@
 #include <vector>
 #include <array>
 #include <algorithm>
-#include <memory>
 using namespace std;
 
-struct Cell { int hor, ver, posdiag, negdiag, result; };
+struct Cell { uint32_t hor, ver, posdiag, negdiag, result; };
+
+#define LOG(x) "  " #x " = " << (x)
+ostream& operator<<(ostream& os, const array<Cell, 2>& cell) {
+	return os << "S:" << LOG(cell[0].hor) << LOG(cell[0].ver) << LOG(cell[0].posdiag) << LOG(cell[0].negdiag) << LOG(cell[0].result) << "\n"
+		<< "s:" << LOG(cell[1].hor) << LOG(cell[1].ver) << LOG(cell[1].posdiag) << LOG(cell[1].negdiag) << LOG(cell[1].result);
+}
 
 int main() {
 	int n; cin >> n;
 	vector<vector<char>> a(n, vector<char>(n));
 	for (auto& x : a) for (auto& y : x) { char tmp; cin >> tmp; y = tmp == 's'; }
-	vector<vector<unique_ptr<array<Cell, 2>>>> dp(n); for (auto& x : dp) x = vector<unique_ptr<array<Cell, 2>>>(n);
 
-	for (int s = 0; s < 2 * n - 1; ++s) {
-		for (int i = 0; i <= s; ++i) {
-			int j = s - i; if (i >= n || j >= n) continue;
-			int idx = a[i][j]; dp[i][j] = make_unique<array<Cell, 2>>();
-			(*dp[i][j])[idx].hor = (j > 0 ? (*dp[i][j-1])[idx].hor : 0) + 1;
-			(*dp[i][j])[idx].ver = (i > 0 ? (*dp[i-1][j])[idx].ver : 0) + 1;
-			(*dp[i][j])[idx].posdiag = (i > 0 && j < n-1 ? (*dp[i-1][j+1])[idx].posdiag : 0) + 1;
-			(*dp[i][j])[idx].negdiag = (i > 0 && j > 0 ? (*dp[i-1][j-1])[idx].negdiag : 0) + 1;
-			(*dp[i][j])[idx].result = max({
-				(j > 0 ? (*dp[i][j-1])[idx].result : 0),
-				(i > 0 ? (*dp[i-1][j])[idx].result : 0),
-				(i > 0 && j < n-1 ? (*dp[i-1][j+1])[idx].result : 0),
-				(i > 0 && j > 0 ? (*dp[i-1][j-1])[idx].result : 0),
-				(*dp[i][j])[idx].hor,
-				(*dp[i][j])[idx].ver,
-				(*dp[i][j])[idx].posdiag,
-				(*dp[i][j])[idx].negdiag
-			});
-			(*dp[i][j])[!idx].result = max({
-				(j > 0 ? (*dp[i][j-1])[!idx].result : 0),
-				(i > 0 ? (*dp[i-1][j])[!idx].result : 0),
-				(i > 0 && j < n-1 ? (*dp[i-1][j+1])[!idx].result : 0),
-				(i > 0 && j > 0 ? (*dp[i-1][j-1])[!idx].result : 0)
+	vector<array<Cell, 2>> pprev_diag, prev_diag, this_diag;
+	for (int diag_number = 1; diag_number <= n * 2 - 1; ++diag_number) {
+		int s = (diag_number <= n ? diag_number : n * 2 - diag_number);
+		this_diag.resize(s);
+		for (int i = s - 1, a_i = max(0, diag_number - n); i != -1 && a_i < n; --i, ++a_i) {
+			const int idx = a[a_i][diag_number-a_i-1];
+			{
+				int idx2 = i + 1;
+				bool index_valid = idx2 < this_diag.size();
+				this_diag[i][idx].posdiag = (index_valid ? this_diag[idx2][idx].posdiag : 0) + 1;
+				if (index_valid) {
+					this_diag[i][0].result = max(this_diag[i][0].result, this_diag[idx2][0].result);
+					this_diag[i][1].result = max(this_diag[i][1].result, this_diag[idx2][1].result);
+				}
+			}
+			{
+				int idx2 = i + (this_diag.size() < prev_diag.size());
+				bool index_valid = idx2 > -1 && idx2 < prev_diag.size();
+				this_diag[i][idx].ver = (index_valid ? prev_diag[idx2][idx].ver : 0) + 1;
+				if (index_valid) {
+					this_diag[i][0].result = max(this_diag[i][0].result, prev_diag[idx2][0].result);
+					this_diag[i][1].result = max(this_diag[i][1].result, prev_diag[idx2][1].result);
+				}
+			}
+			{
+				int idx2 = i - (this_diag.size() > prev_diag.size());
+				bool index_valid = idx2 > -1 && idx2 < prev_diag.size();
+				this_diag[i][idx].hor = (index_valid ? prev_diag[idx2][idx].hor : 0) + 1;
+				if (index_valid) {
+					this_diag[i][0].result = max(this_diag[i][0].result, prev_diag[idx2][0].result);
+					this_diag[i][1].result = max(this_diag[i][1].result, prev_diag[idx2][1].result);
+				}
+			}
+			{
+				int idx2 = i - (this_diag.size() > prev_diag.size()) + (prev_diag.size() < pprev_diag.size());
+				bool index_valid = idx2 > -1 && idx2 < pprev_diag.size();
+				this_diag[i][idx].negdiag = (index_valid ? pprev_diag[idx2][idx].negdiag : 0) + 1;
+				if (index_valid) {
+					this_diag[i][0].result = max(this_diag[i][0].result, pprev_diag[idx2][0].result);
+					this_diag[i][1].result = max(this_diag[i][1].result, pprev_diag[idx2][1].result);
+				}
+			}
+			this_diag[i][idx].result = max({
+				this_diag[i][idx].result,
+				this_diag[i][idx].posdiag,
+				this_diag[i][idx].ver,
+				this_diag[i][idx].hor,
+				this_diag[i][idx].negdiag
 			});
 		}
-
-		for (int i = 0; i <= s - 2; ++i) {
-			int j = s - 2 - i; if (i >= n || j >= n) continue;
-			dp[i][j].release();
-		}
+		pprev_diag = exchange(prev_diag, move(this_diag)), this_diag.clear();
 	}
 
-	auto S = (*dp[n-1][n-1])[0].result, s = (*dp[n-1][n-1])[1].result;
+	auto S = prev_diag[0][0].result, s = prev_diag[0][1].result;
 	if (s > S) cout << "s\n" << s;
 	else if (s < S) cout << "S\n" << S;
 	else cout << "?\n" << s;
