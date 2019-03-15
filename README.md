@@ -1,1 +1,5 @@
-[Profile](http://acm.timus.ru/author.aspx?id=246905&sort=difficulty)
+В этом репозитории архивируются решения задач с тимуса.
+
+Ссылка на профиль: [link](http://acm.timus.ru/author.aspx?id=246905&sort=difficulty)
+
+Код решений намеренно написан в олимпиадном стиле.
